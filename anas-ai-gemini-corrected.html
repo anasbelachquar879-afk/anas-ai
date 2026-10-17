@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ANAS AI</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#080d18;color:#eef;font-family:Arial;display:flex;height:100vh}
+aside{width:240px;background:#101827;padding:22px;border-right:1px solid #263650}.logo{font-size:26px;font-weight:bold;color:#58adff;margin-bottom:25px}
+button{border:0;border-radius:12px;padding:12px;cursor:pointer;font-weight:bold}.new{background:linear-gradient(135deg,#287fff,#754dff);color:white;width:100%}
+main{flex:1;display:flex;flex-direction:column}header{padding:23px;border-bottom:1px solid #263650;background:#0d1422}
+#chat{flex:1;overflow:auto;padding:35px 9%;display:flex;flex-direction:column;gap:18px}.welcome{text-align:center;margin:auto}.welcome h1{font-size:44px;color:#65b7ff}
+.msg{display:flex;gap:12px;max-width:850px}.msg.user{align-self:flex-end;flex-direction:row-reverse}.avatar{width:38px;height:38px;min-width:38px;border-radius:12px;background:#287fff;display:grid;place-items:center;font-weight:bold}.bubble{white-space:pre-wrap;line-height:1.6;background:#142239;border:1px solid #304462;padding:14px;border-radius:16px}.user .bubble{background:#1d385d}
+.composer{padding:18px 9%;background:#0d1422}.box{display:flex;gap:10px;padding:10px;border:1px solid #304462;border-radius:18px;background:#142039}
+textarea{flex:1;background:transparent;color:white;border:0;outline:0;resize:none;padding:12px;font-size:15px}.send{background:#287fff;color:white}
+#settings{display:none;position:fixed;inset:0;background:#000b;align-items:center;justify-content:center}.panel{background:#142039;padding:25px;border-radius:18px;width:min(500px,90%)}input{width:100%;padding:13px;margin:12px 0;background:#08101e;color:white;border:1px solid #405572;border-radius:10px}
+@media(max-width:700px){aside{display:none}#chat,.composer{padding-left:16px;padding-right:16px}.welcome h1{font-size:32px}}
+</style></head>
+<body>
+<aside><div class="logo">✦ ANAS AI</div><button class="new" onclick="newChat()">＋ Nouvelle discussion</button><br><br><button onclick="openSettings()">⚙️ API Key</button><p style="color:#91a4c2;font-size:12px">Version de test. Ne partage jamais ta clé.</p></aside>
+<main><header><b>ANAS AI / Gemini</b></header>
+<section id="chat"><div class="welcome" id="welcome"><h1>Bonjour Anas 👋</h1><p>Pose ta question à ton assistant.</p></div></section>
+<section class="composer"><div class="box"><textarea id="input" placeholder="Écris ton message..." rows="1"></textarea><button class="send" onclick="sendMessage()">➤</button></div></section></main>
+<div id="settings"><div class="panel"><h2>Connexion Gemini</h2><p>Ajoute une clé API avec l'aide de tes parents. Ne publie pas ce fichier avec la clé dedans.</p><input id="key" type="password" placeholder="Clé API"><button onclick="saveKey()">Enregistrer</button> <button onclick="closeSettings()">Fermer</button></div></div>
+<script>
+let key=localStorage.getItem("anas_key")||"",history=[];
+const chat=document.getElementById("chat"),input=document.getElementById("input"),welcome=document.getElementById("welcome");
+function openSettings(){settings.style.display="flex";document.getElementById("key").value=key}
+function closeSettings(){settings.style.display="none"}
+function saveKey(){key=document.getElementById("key").value.trim();if(key)localStorage.setItem("anas_key",key);closeSettings()}
+function add(text,role){welcome.style.display="none";let r=document.createElement("div");r.className="msg "+role;let a=document.createElement("div");a.className="avatar";a.textContent=role==="user"?"A":"✦";let b=document.createElement("div");b.className="bubble";b.textContent=text;r.append(a,b);chat.append(r);chat.scrollTop=chat.scrollHeight;return b}
+function newChat(){chat.innerHTML="";chat.append(welcome);welcome.style.display="block";history=[]}
+async function sendMessage(){
+ let text=input.value.trim();if(!text)return;
+ if(!key){openSettings();alert("Ajoute d'abord ta clé API.");return}
+ add(text,"user");input.value="";let b=add("⏳ Je réfléchis...","bot");
+ history.push({role:"user",parts:[{text:text}]});
+ try{
+ let res=await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":key},body:JSON.stringify({contents:history})});
+ let data=await res.json();if(!res.ok)throw Error(data.error?.message||"Erreur");
+ let ans=data.candidates?.[0]?.content?.parts?.map(x=>x.text||"").join("")||"Pas de réponse.";
+ b.textContent=ans;history.push({role:"model",parts:[{text:ans}]});
+ }catch(e){b.textContent="Erreur: "+e.message}
+}
+input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendMessage()}});
+</script></body></html>
